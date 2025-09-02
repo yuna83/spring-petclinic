@@ -2,9 +2,9 @@ pipeline {
   agent any 
 
   stages{
-    stage('Hello'){
+    stage('Git Clone'){
       steps {
-        echo 'Hello World'
+        git url: 'https://github.com/yuna83/spring-petclinic.git', branch: 'main'
       }
     }
   }
