@@ -39,6 +39,11 @@ pipeline {
         sh 'docker push yyn83/spring-petclinic:latest'
       }
     }
+    stage('Docker Image Remove') {
+      steps {
+        sh 'docker rmi yyn83/spring-petclinic:$BUILD_NUMBER yyn83/spring-petclinic:latest'
+      }
+    }
     stage('Publish Over SSH') {
       steps {
         sshPublisher(publishers: [sshPublisherDesc(configName: 'Target',
