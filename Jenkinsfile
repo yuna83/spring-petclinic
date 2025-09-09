@@ -49,19 +49,9 @@ pipeline {
         sshPublisher(publishers: [sshPublisherDesc(configName: 'web01', 
         transfers: [sshTransfer(cleanRemote: false, excludes: '', 
        execCommand: '''
-      
-        docker rm -f $(docker ps -aq) >/dev/null 2>&1 || true
-        docker images -q | xargs -r docker rmi -f || true
-        
-        
-        nohup sh -c '
-          docker pull yyn83/spring-petclinic:latest || true
-          docker rm -f spring-petclinic >/dev/null 2>&1 || true
-          docker run -d --restart=always -p 8080:8080 --name spring-petclinic yyn83/spring-petclinic:latest
-        ' </dev/null >/dev/null 2>&1 &
-        
-        
-        exit 0
+        docker rm -f $(docker ps -aq)
+        docker rmi $(docker images -q)
+        docker run -itd -p 8080:8080 --name=spring-petclinic yyn83/spring-petclinic:latest
         ''',
         execTimeout: 600000, 
         flatten: false, 
@@ -83,18 +73,9 @@ pipeline {
         sshPublisher(publishers: [sshPublisherDesc(configName: 'web02', 
         transfers: [sshTransfer(cleanRemote: false, excludes: '', 
         execCommand: '''
-        
-        docker rm -f $(docker ps -aq) >/dev/null 2>&1 || true
-        docker images -q | xargs -r docker rmi -f || true
-        
-        
-        nohup sh -c '
-          docker pull yyn83/spring-petclinic:latest || true
-          docker rm -f spring-petclinic >/dev/null 2>&1 || true
-          docker run -d --restart=always -p 8080:8080 --name spring-petclinic yyn83/spring-petclinic:latest
-        ' </dev/null >/dev/null 2>&1 &
-        
-        exit 0
+        docker rm -f $(docker ps -aq)
+        docker rmi $(docker images -q)
+        docker run -itd -p 8080:8080 --name=spring-petclinic yyn83/spring-petclinic:latest
         ''',
         execTimeout: 600000, 
         flatten: false, 
