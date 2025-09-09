@@ -53,7 +53,7 @@ pipeline {
         docker rmi $(docker images -q)
         docker run -itd -p 8080:8080 --name=spring-petclinic yyn83/spring-petclinic:latest
         ''', 
-        execTimeout: 120000, 
+        execTimeout: 1200000, 
         flatten: false, 
         makeEmptyDirs: false, 
         noDefaultExcludes: false, 
@@ -77,7 +77,7 @@ pipeline {
         docker rmi $(docker images -q)
         docker run -itd -p 8080:8080 --name=spring-petclinic yyn83/spring-petclinic:latest
         ''', 
-        execTimeout: 120000, 
+        execTimeout: 1200000, 
         flatten: false, 
         makeEmptyDirs: false, 
         noDefaultExcludes: false, 
