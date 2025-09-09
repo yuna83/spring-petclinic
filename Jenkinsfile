@@ -64,9 +64,10 @@ pipeline {
         sourceFiles: '')], 
         usePromotionTimestamp: false, 
         useWorkspaceInPromotion: false, 
-        verbose: false), 
-
-                                    sshPublisherDesc(configName: 'web02', 
+        verbose: false)])
+      }
+      steps {
+        sshPublisher(publishers: [sshPublisherDesc(configName: 'web02', 
         transfers: [sshTransfer(cleanRemote: false, excludes: '', 
         execCommand: '''
         docker rm -f $(docker ps -aq)
