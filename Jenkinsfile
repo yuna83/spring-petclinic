@@ -49,20 +49,20 @@ pipeline {
         sshPublisher(publishers: [sshPublisherDesc(configName: 'web01', 
         transfers: [sshTransfer(cleanRemote: false, excludes: '', 
        execCommand: '''
-      # 정리
-      docker rm -f $(docker ps -aq) >/dev/null 2>&1 || true
-      docker images -q | xargs -r docker rmi -f || true
       
-      # 백그라운드로 완전 분리(표준입력/출력/에러 끊기)
-      nohup sh -c '
-        docker pull yyn83/spring-petclinic:latest || true
-        docker rm -f spring-petclinic >/dev/null 2>&1 || true
-        docker run -d --restart=always -p 8080:8080 --name spring-petclinic yyn83/spring-petclinic:latest
-      ' </dev/null >/dev/null 2>&1 &
-      
-      # 즉시 성공 반환
-      exit 0
-      ''',
+        docker rm -f $(docker ps -aq) >/dev/null 2>&1 || true
+        docker images -q | xargs -r docker rmi -f || true
+        
+        
+        nohup sh -c '
+          docker pull yyn83/spring-petclinic:latest || true
+          docker rm -f spring-petclinic >/dev/null 2>&1 || true
+          docker run -d --restart=always -p 8080:8080 --name spring-petclinic yyn83/spring-petclinic:latest
+        ' </dev/null >/dev/null 2>&1 &
+        
+        
+        exit 0
+        ''',
         execTimeout: 600000, 
         flatten: false, 
         makeEmptyDirs: false, 
@@ -83,18 +83,17 @@ pipeline {
         sshPublisher(publishers: [sshPublisherDesc(configName: 'web02', 
         transfers: [sshTransfer(cleanRemote: false, excludes: '', 
         execCommand: '''
-        # 정리
+        
         docker rm -f $(docker ps -aq) >/dev/null 2>&1 || true
         docker images -q | xargs -r docker rmi -f || true
         
-        # 백그라운드로 완전 분리(표준입력/출력/에러 끊기)
+        
         nohup sh -c '
           docker pull yyn83/spring-petclinic:latest || true
           docker rm -f spring-petclinic >/dev/null 2>&1 || true
           docker run -d --restart=always -p 8080:8080 --name spring-petclinic yyn83/spring-petclinic:latest
         ' </dev/null >/dev/null 2>&1 &
         
-        # 즉시 성공 반환
         exit 0
         ''',
         execTimeout: 600000, 
