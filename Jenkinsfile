@@ -44,7 +44,7 @@ pipeline {
         sh 'docker rmi yyn83/spring-petclinic:$BUILD_NUMBER yyn83/spring-petclinic:latest'
       }
     }
-    stage('Publish Over SSH') {
+    stage('Publish Over SSH01') {
       steps {
         sshPublisher(publishers: [sshPublisherDesc(configName: 'web01', 
         transfers: [sshTransfer(cleanRemote: false, excludes: '', 
@@ -66,6 +66,9 @@ pipeline {
         useWorkspaceInPromotion: false, 
         verbose: false)])
       }
+    }
+
+    stage('Publish Over SSH02') {
       steps {
         sshPublisher(publishers: [sshPublisherDesc(configName: 'web02', 
         transfers: [sshTransfer(cleanRemote: false, excludes: '', 
