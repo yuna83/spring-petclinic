@@ -16,9 +16,8 @@ pipeline {
         sshPublisher(publishers: [sshPublisherDesc(configName: 'web01', 
         transfers: [sshTransfer(cleanRemote: false, excludes: '', 
        execCommand: '''
-        cd /var/www/html
-        echo "WEB01 hi" > index.html
-
+        cd test
+        echo 'hi 123' > hello.txt
         ''',
         execTimeout: 600000, 
         flatten: false, 
@@ -40,8 +39,8 @@ pipeline {
         sshPublisher(publishers: [sshPublisherDesc(configName: 'web02', 
         transfers: [sshTransfer(cleanRemote: false, excludes: '', 
         execCommand: '''
-        cd /var/www/html
-        echo "WEB02 hi" > index.html
+        cd test
+        echo 'hi 321' > hello.txt
         ''',
         execTimeout: 600000, 
         flatten: false, 
