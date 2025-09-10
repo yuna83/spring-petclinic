@@ -11,15 +11,6 @@ pipeline {
   }
   
   stages{
-      stage('scp jar') {
-          steps {
-              sh '''
-                  scp /home/ubuntu/jenkins/jenkins_home/workspace/Pilpeline-web/target/spring-petclinic-3.5.0-SNAPSHOT.jar \
-                  rocky@172.16.32.11:/home/rocky/deploy/
-              '''
-          }
-      }
-
       stage('SSH Publish') {
             steps {
                 echo 'SSH Publish'
