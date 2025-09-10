@@ -14,7 +14,7 @@ pipeline {
       stage('SSH Publish') {
             steps {
                 echo 'SSH Publish'
-                sshPublisher(publishers: [sshPublisherDesc(configName: 'web01', 
+                sshPublisher(publishers: [sshPublisherDesc(configName: 'web02', 
                 transfers: [sshTransfer(cleanRemote: false, 
                 excludes: '', 
                 execCommand: '''
