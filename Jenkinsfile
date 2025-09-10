@@ -49,8 +49,6 @@ pipeline {
         sshPublisher(publishers: [sshPublisherDesc(configName: 'web01', 
         transfers: [sshTransfer(cleanRemote: false, excludes: '', 
        execCommand: '''
-        docker rm -f $(docker ps -aq)
-        docker rmi $(docker images -q)
         docker run -itd -p 8080:8080 --name=spring-petclinic yyn83/spring-petclinic:latest
         ''',
         execTimeout: 600000, 
@@ -73,8 +71,6 @@ pipeline {
         sshPublisher(publishers: [sshPublisherDesc(configName: 'web02', 
         transfers: [sshTransfer(cleanRemote: false, excludes: '', 
         execCommand: '''
-        docker rm -f $(docker ps -aq)
-        docker rmi $(docker images -q)
         docker run -itd -p 8080:8080 --name=spring-petclinic yyn83/spring-petclinic:latest
         ''',
         execTimeout: 600000, 
