@@ -17,7 +17,7 @@ pipeline {
         transfers: [sshTransfer(cleanRemote: false, excludes: '', 
        execCommand: '''
         cd /var/www/html
-        echo "WEB01 hi" | sudo tee index.html
+        echo "WEB01 hi" > index.html
 
         ''',
         execTimeout: 600000, 
@@ -41,7 +41,7 @@ pipeline {
         transfers: [sshTransfer(cleanRemote: false, excludes: '', 
         execCommand: '''
         cd /var/www/html
-        echo "WEB02 hi" | sudo tee index.html
+        echo "WEB02 hi" > index.html
         ''',
         execTimeout: 600000, 
         flatten: false, 
