@@ -37,7 +37,7 @@ pipeline {
 
                             echo '▶️ 2. Jenkins에서 빌드한 JAR 복사'
                             rm -f app.jar
-                            cp ${WORKSPACE}/target/*.jar ./app.jar
+                            cp ${WORKSPACE}/target/*petclinic*.jar ./app.jar
 
                             echo '▶️ 3. DockerHub 로그인'
                             echo '${DOCKERHUB_PSW}' | docker login -u '${DOCKERHUB_USR}' --password-stdin
