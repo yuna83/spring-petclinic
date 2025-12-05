@@ -28,7 +28,7 @@ pipeline {
         stage('Build & Push Docker (Kaniko)') {
             agent {
                 kubernetes {
-                    label 'kaniko-build'
+                    label 'kaniko'
                     defaultContainer 'kaniko'
                     yaml """
 apiVersion: v1
