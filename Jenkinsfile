@@ -1,93 +1,58 @@
 pipeline {
-    agent any
+  agent any
 
-    tools {
-        maven "M3"
-        jdk "JDK17"
-    }
-
-    environment {
-        DOCKER_REPO = "yyn83/petclinic"
-    }
-
-    stages {
-
-        stage('Checkout') {
-            steps {
-                git branch: 'main', url: "https://github.com/yuna83/spring-petclinic.git"
-            }
-        }
-
-        stage('Build JAR') {
-            steps {
-                sh "chmod +x mvnw"
-                sh "./mvnw clean package -DskipTests"
-            }
-        }
-
-        stage('Build & Push Docker (Kaniko)') {
-            steps {
-                sh """
-kubectl delete pod kaniko-builder -n jenkins --ignore-not-found=true
-
-kubectl run kaniko-builder -n jenkins \
-  --restart=Never \
-  --image=gcr.io/kaniko-project/executor:debug \
-  --overrides='
-{
-  "apiVersion": "v1",
-  "spec": {
-    "containers": [
-      {
-        "name": "kaniko",
-        "image": "gcr.io/kaniko-project/executor:debug",
-        "args": [
-          "--dockerfile=Dockerfile",
-          "--context=git://github.com/yuna83/spring-petclinic#main",
-          "--destination=${DOCKER_REPO}:latest"
-        ],
-        "volumeMounts": [
-          {
-            "name": "docker-config",
-            "mountPath": "/kaniko/.docker/"
-          }
-        ]
-      }
-    ],
-    "volumes": [
-      {
-        "name": "docker-config",
-        "secret": {
-          "secretName": "regcred",
-          "items": [
-            {
-              "key": ".dockerconfigjson",
-              "path": "config.json"
-            }
-          ]
-        }
-      }
-    ]
+  tools {
+    maven "M3"
+    jdk "JDK17"
   }
-}
-'
-"""
 
-                echo "Kaniko Pod started. Waiting for push..."
-                sh "kubectl logs -f pod/kaniko-builder -n jenkins"
-            }
-        }
+  environment {
+    DOCKERHUB = credentials('dockerCredentials')
+  }
 
-        stage('Deploy to K8s') {
-            steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
-                    sh '''
-export KUBECONFIG=$KUBECONFIG_FILE
-kubectl set image deployment/petclinic petclinic=${DOCKER_REPO}:latest -n petclinic
-kubectl rollout status deployment/petclinic -n petclinic
-                    '''
-                }
-            }
-        }
+  stages {
+
+    stage('Git Clone') {
+      steps {
+        git url: 'https://github.com/yuna83/spring-petclinic.git', branch: 'main'
+      }
     }
+
+    stage('Maven Build') {
+      steps {
+        sh 'mvn -Dmaven.test.failure.ignore=true clean package'
+      }
+    }
+
+    stage('Build & Push Image on Master Node') {
+      steps {
+        sshagent(credentials: ['k8s-master-ssh']) {
+          sh """
+            ssh -o StrictHostKeyChecking=no ubuntu@k8s-master '
+              cd /home/ubuntu/petclinic &&
+              cp ${WORKSPACE}/target/*.jar ./app.jar &&
+              echo "$DOCKERHUB_PSW" | docker login -u "$DOCKERHUB_USR" --password-stdin &&
+              docker build -t yyn83/spring-petclinic:${BUILD_NUMBER} . &&
+              docker push yyn83/spring-petclinic:${BUILD_NUMBER} &&
+              docker tag yyn83/spring-petclinic:${BUILD_NUMBER} yyn83/spring-petclinic:latest &&
+              docker push yyn83/spring-petclinic:latest
+            '
+          """
+        }
+      }
+    }
+
+    stage('Deploy to Kubernetes') {
+      steps {
+        sshagent(credentials: ['k8s-master-ssh']) {
+          sh """
+            ssh -o StrictHostKeyChecking=no ubuntu@k8s-master '
+              kubectl set image deployment/petclinic petclinic=yyn83/spring-petclinic:${BUILD_NUMBER} -n default
+            '
+          """
+        }
+      }
+    }
+
+  }
 }
