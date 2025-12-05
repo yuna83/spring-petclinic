@@ -12,14 +12,12 @@ pipeline {
 
     stages {
 
-        // 📌 GitHub 소스코드 가져오기
         stage('Checkout') {
             steps {
                 git branch: 'main', url: "https://github.com/yuna83/spring-petclinic.git"
             }
         }
 
-        // 📌 Maven 빌드 → JAR 생성
         stage('Build JAR') {
             steps {
                 sh "chmod +x mvnw"
@@ -27,7 +25,6 @@ pipeline {
             }
         }
 
-        // 📌 Kaniko로 Docker Build & Push
         stage('Build & Push Docker (Kaniko)') {
             agent {
                 kubernetes {
@@ -44,8 +41,7 @@ spec:
   containers:
   - name: kaniko
     image: gcr.io/kaniko-project/executor:latest
-    command:
-    - cat
+    command: ["cat"]
     tty: true
     volumeMounts:
     - name: docker-config
@@ -65,26 +61,29 @@ spec:
             }
             steps {
                 container('kaniko') {
-                    sh """
+                    sh '''
 /kaniko/executor \
-  --context=$(pwd) \
+  --context=`pwd` \
   --dockerfile=Dockerfile \
-  --destination=${DOCKER_REPO}:latest \
+  --destination='"${DOCKER_REPO}"':latest \
   --cache=true
-"""
+                    '''
                 }
             }
         }
 
-        // 📌 Kubernetes에 새 이미지로 롤링 업데이트
         stage('Deploy to K8s') {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KCFG')]) {
-                    sh """
-                    export KUBECONFIG=$KCFG
-                    kubectl set image deployment/petclinic petclinic=${DOCKER_REPO}:latest -n petclinic
-                    kubectl rollout status deployment/petclinic -n petclinic
-                    """
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
+                    sh '''
+export KUBECONFIG=$KUBECONFIG_FILE
+
+kubectl set image deployment/petclinic \
+  petclinic='"${DOCKER_REPO}"':latest \
+  -n petclinic
+
+kubectl rollout status deployment/petclinic -n petclinic
+                    '''
                 }
             }
         }
