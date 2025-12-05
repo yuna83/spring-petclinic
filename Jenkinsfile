@@ -16,7 +16,7 @@ pipeline {
         stage('Checkout from GitHub') {
             steps {
                 echo "📌 GitHub 소스코드 가져오는 중..."
-                git url: "https://github.com/yuna83/spring-petclinic.git"
+                git branch: 'main', url: "https://github.com/yuna83/spring-petclinic.git"
             }
         }
 
