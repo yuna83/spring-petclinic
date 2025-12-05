@@ -28,7 +28,7 @@ pipeline {
       steps {
         sshagent(credentials: ['k8s-master-ssh']) {
           sh """
-            ssh -o StrictHostKeyChecking=no ubuntu@k8s-master '
+            ssh -o StrictHostKeyChecking=no ubuntu@192.168.20.101 '
               cd /home/ubuntu/petclinic &&
               cp ${WORKSPACE}/target/*.jar ./app.jar &&
               echo "$DOCKERHUB_PSW" | docker login -u "$DOCKERHUB_USR" --password-stdin &&
@@ -46,7 +46,7 @@ pipeline {
       steps {
         sshagent(credentials: ['k8s-master-ssh']) {
           sh """
-            ssh -o StrictHostKeyChecking=no ubuntu@k8s-master '
+            ssh -o StrictHostKeyChecking=no ubuntu@192.168.20.101 '
               kubectl set image deployment/petclinic petclinic=yyn83/spring-petclinic:${BUILD_NUMBER} -n default
             '
           """
