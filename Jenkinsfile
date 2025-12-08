@@ -15,7 +15,7 @@ spec:
   containers:
   - name: kaniko
     image: gcr.io/kaniko-project/executor:slim
-    command: ["cat"]
+    command: ["sleep", "infinity"]
     tty: true
     volumeMounts:
     - name: docker-config
