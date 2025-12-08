@@ -14,7 +14,7 @@ spec:
 
   containers:
   - name: kaniko
-    image: gcr.io/kaniko-project/executor:debug
+    image: gcr.io/kaniko-project/executor:slim
     command: ["cat"]
     tty: true
     volumeMounts:
