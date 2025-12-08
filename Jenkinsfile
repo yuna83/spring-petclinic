@@ -58,11 +58,6 @@ spec:
         }
     }
 
-    tools {
-        maven "M3"
-        jdk "JDK17"
-    }
-
     environment {
         DOCKER_REPO = "yyn83/spring-petclinic"
     }
