@@ -1,19 +1,18 @@
 pipeline {
     agent {
         kubernetes {
-            label "test-light-ci"
-            defaultContainer "jnlp"
+            label 'petclinic-build'
+            defaultContainer 'jnlp'
             yaml """
 apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    jenkins: test-light-ci
+    jenkins: petclinic-build
 spec:
   serviceAccountName: jenkins
 
   containers:
-
   - name: kaniko
     image: gcr.io/kaniko-project/executor:debug
     command: ["/bin/sh", "-c", "sleep infinity"]
@@ -52,16 +51,26 @@ spec:
         }
     }
 
+    tools {
+        maven "M3"
+        jdk "JDK17"
+    }
+
     environment {
-        DOCKER_REPO = "yyn83/test-light"
+        DOCKER_REPO = "yyn83/spring-petclinic"
     }
 
     stages {
 
         stage('Git Clone') {
             steps {
-                git url: 'https://github.com/yuna83/test-light.git', branch: 'main'
-                sh "echo '✔ Git Clone 완료'"
+                git url: 'https://github.com/yuna83/spring-petclinic.git', branch: 'main'
+            }
+        }
+
+        stage('Maven Build') {
+            steps {
+                sh "mvn -Dmaven.test.failure.ignore=true clean package"
             }
         }
 
@@ -70,11 +79,11 @@ spec:
                 container('kaniko') {
                     sh """
                     /kaniko/executor \
-                        --context=${WORKSPACE} \
-                        --dockerfile=${WORKSPACE}/Dockerfile \
-                        --destination=${DOCKER_REPO}:${BUILD_NUMBER} \
-                        --destination=${DOCKER_REPO}:latest \
-                        --cache=false
+                      --context=${WORKSPACE} \
+                      --dockerfile=${WORKSPACE}/Dockerfile \
+                      --destination=${DOCKER_REPO}:${BUILD_NUMBER} \
+                      --destination=${DOCKER_REPO}:latest \
+                      --cache=true
                     """
                 }
             }
@@ -84,14 +93,8 @@ spec:
             steps {
                 container('kubectl') {
                     sh """
-                    echo '✔ YAML 적용'
-                    kubectl apply -f ${WORKSPACE}/k8s.yaml
-
-                    echo '✔ 최신 이미지 반영'
-                    kubectl set image deployment/test-app test-app=${DOCKER_REPO}:${BUILD_NUMBER} -n app
-
-                    echo '✔ 롤링 업데이트 확인'
-                    kubectl rollout status deployment/test-app -n app
+                    kubectl set image deployment/petclinic petclinic=${DOCKER_REPO}:${BUILD_NUMBER} -n app
+                    kubectl rollout status deployment/petclinic -n app
                     """
                 }
             }
