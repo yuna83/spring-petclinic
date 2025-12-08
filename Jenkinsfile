@@ -12,6 +12,8 @@ metadata:
     jenkins: petclinic-build
 spec:
   serviceAccountName: jenkins
+  nodeSelector:
+    kubernetes.io/hostname: k8s-node02
 
   containers:
 
