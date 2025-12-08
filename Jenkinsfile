@@ -1,14 +1,14 @@
 pipeline {
     agent {
         kubernetes {
-            label 'petclinic-build'
-            defaultContainer 'jnlp'
+            label "test-light-ci"
+            defaultContainer "jnlp"
             yaml """
 apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    jenkins: petclinic-build
+    jenkins: test-light-ci
 spec:
   serviceAccountName: jenkins
 
@@ -51,26 +51,16 @@ spec:
         }
     }
 
-    tools {
-        maven "M3"
-        jdk "JDK17"
-    }
-
     environment {
-        DOCKER_REPO = "yyn83/spring-petclinic"
+        DOCKER_REPO = "yyn83/test-light"
     }
 
     stages {
 
         stage('Git Clone') {
             steps {
-                git url: 'https://github.com/yuna83/spring-petclinic.git', branch: 'main'
-            }
-        }
-
-        stage('Maven Build') {
-            steps {
-                sh "mvn -Dmaven.test.failure.ignore=true clean package"
+                git url: 'https://github.com/yuna83/test-light.git', branch: 'main'
+                sh "echo '✔ Git Clone 완료'"
             }
         }
 
@@ -83,7 +73,7 @@ spec:
                       --dockerfile=${WORKSPACE}/Dockerfile \
                       --destination=${DOCKER_REPO}:${BUILD_NUMBER} \
                       --destination=${DOCKER_REPO}:latest \
-                      --cache=true
+                      --cache=false
                     """
                 }
             }
@@ -93,8 +83,11 @@ spec:
             steps {
                 container('kubectl') {
                     sh """
-                    kubectl set image deployment/petclinic petclinic=${DOCKER_REPO}:${BUILD_NUMBER} -n app
-                    kubectl rollout status deployment/petclinic -n app
+                    echo '✔ 배포 YAML 적용'
+                    kubectl apply -f ${WORKSPACE}/k8s.yaml
+                    echo '✔ 최신 이미지 적용'
+                    kubectl set image deployment/test-app test-app=${DOCKER_REPO}:${BUILD_NUMBER} -n app
+                    kubectl rollout status deployment/test-app -n app
                     """
                 }
             }
