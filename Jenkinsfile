@@ -22,6 +22,7 @@ spec:
     securityContext:
       runAsUser: 0
       privileged: true
+    shell: ["/busybox/sh"]
     volumeMounts:
     - name: docker-config
       mountPath: /kaniko/.docker
