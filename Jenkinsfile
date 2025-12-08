@@ -1,74 +1,215 @@
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            label 'kaniko-build'
+            defaultContainer 'jnlp'
+            yaml """
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    jenkins: kaniko-build
+spec:
+  serviceAccountName: jenkins
 
-    tools {
-        maven "M3"
-        jdk "JDK17"
+  tolerations:
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+    - key: "node.kubernetes.io/disk-pressure"
+      operator: "Exists"
+      effect: "NoSchedule"
+
+  containers:
+    # --------------------------------------
+    # Kaniko Container
+    # --------------------------------------
+    - name: kaniko
+      image: gcr.io/kaniko-project/executor:debug
+      tty: true
+      command: ["/bin/sh"]
+      args: ["-c", "sleep infinity"]
+      securityContext:
+        runAsUser: 0
+      resources:
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+          ephemeral-storage: 2Gi
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+          ephemeral-storage: 5Gi
+      volumeMounts:
+        - name: docker-config
+          mountPath: /kaniko/.docker/config.json
+          subPath: config.json
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent/workspace/
+        - name: kaniko-cache
+          mountPath: /kaniko/cache
+        - name: maven-cache
+          mountPath: /root/.m2
+
+    # --------------------------------------
+    # Maven Container
+    # --------------------------------------
+    - name: maven
+      image: maven:3.9.6-eclipse-temurin-17
+      tty: true
+      command: ["/bin/sh"]
+      args: ["-c", "sleep infinity"]
+      resources:
+        requests:
+          cpu: "500m"
+          memory: "1Gi"
+          ephemeral-storage: 2Gi
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+          ephemeral-storage: 5Gi
+      volumeMounts:
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent/workspace/
+        - name: maven-cache
+          mountPath: /root/.m2
+
+    # --------------------------------------
+    # Kubectl Container
+    # --------------------------------------
+    - name: kubectl
+      image: leeplayed/kubectl:1.28
+      tty: true
+      command: ["/bin/sh"]
+      args: ["-c", "sleep infinity"]
+      resources:
+        requests:
+          cpu: "250m"
+          memory: "512Mi"
+          ephemeral-storage: 1Gi
+        limits:
+          cpu: "500m"
+          memory: "1Gi"
+          ephemeral-storage: 2Gi
+      volumeMounts:
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent/workspace/
+
+    # --------------------------------------
+    # JNLP Agent
+    # --------------------------------------
+    - name: jnlp
+      image: jenkins/inbound-agent:latest
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "256Mi"
+          ephemeral-storage: 500Mi
+        limits:
+          cpu: "500m"
+          memory: "512Mi"
+          ephemeral-storage: 1Gi
+      volumeMounts:
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent/workspace/
+
+  # --------------------------------------
+  # VOLUMES
+  # --------------------------------------
+  volumes:
+    - name: docker-config
+      secret:
+        secretName: dockertoken
+        items:
+        - key: ".dockerconfigjson"
+          path: config.json
+
+    # Jenkins workspace (emptyDir OK)
+    - name: workspace-volume
+      emptyDir: {}
+
+    # Maven cache → hostPath
+    - name: maven-cache
+      hostPath:
+        path: /data/maven-cache
+        type: DirectoryOrCreate
+
+    # Kaniko cache → hostPath
+    - name: kaniko-cache
+      hostPath:
+        path: /data/kaniko-cache
+        type: DirectoryOrCreate
+"""
+        }
     }
 
     environment {
-        DOCKERHUB = credentials('dockerCredentials')
+        REGISTRY = "docker.io/leeplayed"
+        IMAGE = "petclinic"
+        TAG = "${env.BUILD_NUMBER}"
+        K8S_NAMESPACE = "app"
     }
 
     stages {
 
-        stage('Git Clone') {
+        stage('Checkout') {
             steps {
-                git url: 'https://github.com/yuna83/spring-petclinic.git', branch: 'main'
+                git branch: 'main',
+                    url: 'git@github.com:leeplayed/spring-petclinic-k8s.git',
+                    credentialsId: 'github-ssh-key'
             }
         }
 
         stage('Maven Build') {
             steps {
-                sh "mvn -Dmaven.test.failure.ignore=true clean package"
+                container('maven') {
+                    sh """
+export HOME=\$WORKSPACE
+mvn clean package \
+    -DskipTests \
+    -Dcheckstyle.skip=true \
+    -Dmaven.repo.local=/root/.m2
+"""
+                }
             }
         }
 
-        stage('Build & Push Image on Master Node') {
+        stage('Kaniko Build & Push') {
             steps {
-                sshagent(credentials: ['k8s-master-ssh']) {
-                    sh '''
-                        ssh -o StrictHostKeyChecking=no ubuntu@192.168.20.101 "
-                            set -e
+                container('kaniko') {
+                    sh """
+echo "===== Kaniko Build Start: ${REGISTRY}/${IMAGE}:${TAG} ====="
 
-                            echo '▶️ 1. petclinic 작업 폴더 준비'
-                            mkdir -p /home/ubuntu/petclinic
-                            cd /home/ubuntu/petclinic
-
-                            echo '▶️ 2. Jenkins에서 빌드한 JAR 복사'
-                            rm -f app.jar
-                            cp ${WORKSPACE}/target/*petclinic*.jar ./app.jar
-
-                            echo '▶️ 3. DockerHub 로그인'
-                            echo '${DOCKERHUB_PSW}' | docker login -u '${DOCKERHUB_USR}' --password-stdin
-
-                            echo '▶️ 4. Docker 이미지 빌드'
-                            docker build -t yyn83/spring-petclinic:${BUILD_NUMBER} .
-
-                            echo '▶️ 5. 이미지 Push'
-                            docker push yyn83/spring-petclinic:${BUILD_NUMBER}
-
-                            echo '▶️ 6. latest 태그 Push'
-                            docker tag yyn83/spring-petclinic:${BUILD_NUMBER} yyn83/spring-petclinic:latest
-                            docker push yyn83/spring-petclinic:latest
-                        "
-                    '''
+/kaniko/executor \
+  --context \$WORKSPACE \
+  --dockerfile Dockerfile \
+  --destination ${REGISTRY}/${IMAGE}:${TAG} \
+  --cache=true \
+  --cache-dir=/kaniko/cache \
+  --snapshot-mode=redo
+"""
                 }
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                sshagent(credentials: ['k8s-master-ssh']) {
-                    sh '''
-                        ssh -o StrictHostKeyChecking=no ubuntu@192.168.20.101 "
-                            echo '▶️ Kubernetes 배포 시작'
-                            kubectl set image deployment/petclinic petclinic=yyn83/spring-petclinic:${BUILD_NUMBER} -n default
-                            kubectl rollout status deployment/petclinic -n default
-                        "
-                    '''
+                container('kubectl') {
+                    sh """
+kubectl set image deployment/petclinic petclinic-container=${REGISTRY}/${IMAGE}:${TAG} -n ${K8S_NAMESPACE}
+kubectl rollout status deployment/petclinic -n ${K8S_NAMESPACE} --timeout=5m
+"""
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            echo "🎉 SUCCESS: Build & Deploy Completed!"
+        }
+        failure {
+            echo "🔥 FAILED: Check the Jenkins logs!"
         }
     }
 }
