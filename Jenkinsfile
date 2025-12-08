@@ -13,9 +13,10 @@ spec:
   serviceAccountName: jenkins
 
   containers:
+
   - name: kaniko
-    image: gcr.io/kaniko-project/executor:slim
-    command: ["sleep", "infinity"]
+    image: gcr.io/kaniko-project/executor:debug
+    command: ["/bin/sh", "-c", "sleep infinity"]
     tty: true
     volumeMounts:
     - name: docker-config
@@ -25,7 +26,7 @@ spec:
 
   - name: kubectl
     image: bitnami/kubectl:latest
-    command: ["cat"]
+    command: ["/bin/sh", "-c", "sleep infinity"]
     tty: true
     volumeMounts:
     - name: kubeconfig
@@ -69,11 +70,11 @@ spec:
                 container('kaniko') {
                     sh """
                     /kaniko/executor \
-                      --context=${WORKSPACE} \
-                      --dockerfile=${WORKSPACE}/Dockerfile \
-                      --destination=${DOCKER_REPO}:${BUILD_NUMBER} \
-                      --destination=${DOCKER_REPO}:latest \
-                      --cache=false
+                        --context=${WORKSPACE} \
+                        --dockerfile=${WORKSPACE}/Dockerfile \
+                        --destination=${DOCKER_REPO}:${BUILD_NUMBER} \
+                        --destination=${DOCKER_REPO}:latest \
+                        --cache=false
                     """
                 }
             }
@@ -83,10 +84,13 @@ spec:
             steps {
                 container('kubectl') {
                     sh """
-                    echo '✔ 배포 YAML 적용'
+                    echo '✔ YAML 적용'
                     kubectl apply -f ${WORKSPACE}/k8s.yaml
-                    echo '✔ 최신 이미지 적용'
+
+                    echo '✔ 최신 이미지 반영'
                     kubectl set image deployment/test-app test-app=${DOCKER_REPO}:${BUILD_NUMBER} -n app
+
+                    echo '✔ 롤링 업데이트 확인'
                     kubectl rollout status deployment/test-app -n app
                     """
                 }
