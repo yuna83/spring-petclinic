@@ -153,12 +153,15 @@ spec:
     stages {
 
         stage('Checkout') {
-            steps {
-                git branch: 'main',
-                    url: 'git@github.com:yuna83/spring-petclinic.git',
-                    credentialsId: 'github-ssh-key'
-            }
+    steps {
+        container('jnlp') {
+            git branch: 'main',
+                url: 'git@github.com:yuna83/spring-petclinic.git',
+                credentialsId: 'github-ssh-key'
         }
+    }
+}
+
 
         stage('Maven Build') {
             steps {
