@@ -9,16 +9,8 @@ metadata:
     app: jenkins-ci
 spec:
   serviceAccountName: jenkins
-  containers:
-  - name: maven
-    image: maven:3.9-eclipse-temurin-17
-    command:
-    - cat
-    tty: true
-    volumeMounts:
-    - name: maven-cache
-      mountPath: /root/.m2
 
+  containers:
   - name: kaniko
     image: gcr.io/kaniko-project/executor:latest
     command:
@@ -41,23 +33,27 @@ spec:
       readOnly: true
 
   volumes:
-  - name: maven-cache
-    hostPath:
-      path: /data/maven-cache
   - name: kaniko-cache
     hostPath:
       path: /data/kaniko-cache
+
   - name: docker-config
     secret:
       secretName: dockertoken
       items:
       - key: .dockerconfigjson
         path: config.json
+
   - name: kubeconfig
     secret:
       secretName: jenkins-kubeconfig
             """
         }
+    }
+
+    tools {
+        maven "M3"
+        jdk "JDK17"
     }
 
     environment {
@@ -68,19 +64,15 @@ spec:
 
         stage('Git Clone') {
             steps {
-                container('maven') {
-                    git url: 'https://github.com/yuna83/spring-petclinic.git', branch: 'main'
-                }
+                git url: 'https://github.com/yuna83/spring-petclinic.git', branch: 'main'
             }
         }
 
         stage('Maven Build') {
             steps {
-                container('maven') {
-                    sh """
-                    mvn -Dmaven.test.failure.ignore=true clean package
-                    """
-                }
+                sh """
+                mvn -Dmaven.test.failure.ignore=true clean package
+                """
             }
         }
 
@@ -89,8 +81,8 @@ spec:
                 container('kaniko') {
                     sh """
                     /kaniko/executor \
-                      --context=`pwd` \
-                      --dockerfile=`pwd`/Dockerfile \
+                      --context=${WORKSPACE} \
+                      --dockerfile=${WORKSPACE}/Dockerfile \
                       --destination=${DOCKER_REPO}:${BUILD_NUMBER} \
                       --destination=${DOCKER_REPO}:latest \
                       --cache=true
@@ -116,10 +108,10 @@ spec:
 
     post {
         success {
-            echo "🎉 CI/CD 성공! 유나 잘했어!"
+            echo "🎉 유나! CI/CD 성공했어!"
         }
         failure {
-            echo "⚠️ CI/CD 실패.. 유나 내가 같이 도와줄게!"
+            echo "⚠️ 유나.. 실패했는데 내가 도와줄게!"
         }
     }
 }
