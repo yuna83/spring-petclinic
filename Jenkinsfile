@@ -155,7 +155,7 @@ spec:
         stage('Checkout') {
             steps {
                 git branch: 'main',
-                    url: 'git@github.com:leeplayed/spring-petclinic-k8s.git',
+                    url: 'git@github.com:yuna83/spring-petclinic.git',
                     credentialsId: 'github-ssh-key'
             }
         }
