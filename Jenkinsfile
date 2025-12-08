@@ -1,31 +1,32 @@
 pipeline {
     agent {
         kubernetes {
+            label "petclinic-build"
+            defaultContainer "jnlp"
             yaml """
 apiVersion: v1
 kind: Pod
 metadata:
   labels:
-    app: jenkins-ci
+    jenkins: petclinic-build
 spec:
   serviceAccountName: jenkins
 
   containers:
+
   - name: kaniko
     image: gcr.io/kaniko-project/executor:latest
-    command:
-    - cat
+    command: ["/busybox/cat"]
     tty: true
     volumeMounts:
+    - name: docker-config
+      mountPath: /kaniko/.docker
     - name: kaniko-cache
       mountPath: /kaniko/.cache
-    - name: docker-config
-      mountPath: /kaniko/.docker/
 
   - name: kubectl
     image: bitnami/kubectl:latest
-    command:
-    - cat
+    command: ["cat"]
     tty: true
     volumeMounts:
     - name: kubeconfig
@@ -33,10 +34,6 @@ spec:
       readOnly: true
 
   volumes:
-  - name: kaniko-cache
-    hostPath:
-      path: /data/kaniko-cache
-
   - name: docker-config
     secret:
       secretName: dockertoken
@@ -47,6 +44,10 @@ spec:
   - name: kubeconfig
     secret:
       secretName: jenkins-kubeconfig
+
+  - name: kaniko-cache
+    hostPath:
+      path: /data/kaniko-cache
             """
         }
     }
@@ -57,7 +58,7 @@ spec:
     }
 
     environment {
-        DOCKER_REPO = "yyn83/spring-petclinic"
+        DOCKER_REPO="yyn83/spring-petclinic"
     }
 
     stages {
@@ -70,13 +71,11 @@ spec:
 
         stage('Maven Build') {
             steps {
-                sh """
-                mvn -Dmaven.test.failure.ignore=true clean package
-                """
+                sh "mvn -Dmaven.test.failure.ignore=true clean package"
             }
         }
 
-        stage('Kaniko Build & Push') {
+        stage('Docker Build & Push (kaniko)') {
             steps {
                 container('kaniko') {
                     sh """
@@ -95,23 +94,11 @@ spec:
             steps {
                 container('kubectl') {
                     sh """
-                    kubectl set image deployment/petclinic \
-                        petclinic=${DOCKER_REPO}:${BUILD_NUMBER} \
-                        -n app
-
+                    kubectl set image deployment/petclinic petclinic=${DOCKER_REPO}:${BUILD_NUMBER} -n app
                     kubectl rollout status deployment/petclinic -n app
                     """
                 }
             }
-        }
-    }
-
-    post {
-        success {
-            echo "🎉 유나! CI/CD 성공했어!"
-        }
-        failure {
-            echo "⚠️ 유나.. 실패했는데 내가 도와줄게!"
         }
     }
 }
