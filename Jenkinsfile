@@ -4,6 +4,7 @@ pipeline {
         kubernetes {
             label 'petclinic-build'
             defaultContainer 'jnlp'
+
             yaml """
 apiVersion: v1
 kind: Pod
@@ -14,30 +15,48 @@ spec:
 
   containers:
 
+  # -----------------------------
+  # Maven Container (빌드 전용)
+  # -----------------------------
   - name: maven
     image: maven:3-openjdk-17
-    command: ["sleep"]
-    args: ["infinity"]
+    command: ["/bin/sh", "-c", "sleep infinity"]
+    tty: true
 
+  # -----------------------------
+  # Kaniko Container (이미지 빌드)
+  # -----------------------------
   - name: kaniko
     image: gcr.io/kaniko-project/executor:debug
-    command: ["sleep"]
-    args: ["infinity"]
+    command: ["/busybox/sh", "-c", "sleep infinity"]
+    tty: true
+    securityContext:
+      runAsUser: 0
+      privileged: true
     volumeMounts:
       - name: docker-config
         mountPath: /kaniko/.docker
       - name: kaniko-cache
         mountPath: /kaniko/.cache
 
+  # -----------------------------
+  # Kubectl Container (배포)
+  # -----------------------------
   - name: kubectl
     image: bitnami/kubectl:latest
-    command: ["sleep"]
-    args: ["infinity"]
+    command: ["/bin/sh", "-c", "sleep infinity"]
+    tty: true
+    securityContext:
+      runAsUser: 0
+      privileged: true
     volumeMounts:
       - name: kubeconfig
         mountPath: /root/.kube
         readOnly: true
 
+  # -----------------------------
+  # Volumes
+  # -----------------------------
   volumes:
 
   - name: docker-config
@@ -54,6 +73,7 @@ spec:
   - name: kaniko-cache
     hostPath:
       path: /data/kaniko-cache
+
 """
         }
     }
@@ -64,12 +84,18 @@ spec:
 
     stages {
 
+        # =============================
+        # Git Clone
+        # =============================
         stage('Git Clone') {
             steps {
                 git url: 'https://github.com/yuna83/spring-petclinic.git', branch: 'main'
             }
         }
 
+        # =============================
+        # Maven Build
+        # =============================
         stage('Maven Build') {
             steps {
                 container('maven') {
@@ -78,6 +104,9 @@ spec:
             }
         }
 
+        # =============================
+        # Kaniko Build & Push
+        # =============================
         stage('Kaniko Build & Push') {
             steps {
                 container('kaniko') {
@@ -93,6 +122,9 @@ spec:
             }
         }
 
+        # =============================
+        # Deploy to Kubernetes
+        # =============================
         stage('Deploy to Kubernetes') {
             steps {
                 container('kubectl') {
