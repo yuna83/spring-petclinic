@@ -17,7 +17,7 @@ spec:
 
   - name: kaniko
     image: gcr.io/kaniko-project/executor:debug
-    command: ["/bin/sh", "-c", "sleep infinity"]
+    command: ["/busybox/sh", "-c", "sleep infinity"]
     tty: true
     securityContext:
       runAsUser: 0
