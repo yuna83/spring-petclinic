@@ -1,7 +1,5 @@
-FROM openjdk:17-oracle
-
-WORKDIR /app
-
-COPY target/*.jar app.jar
-
+FROM eclipse-temurin:17-jdk
+ARG JAR_FILE=target/*.jar
+COPY ${JAR_FILE} app.jar
 ENTRYPOINT ["java", "-jar", "app.jar"]
+
